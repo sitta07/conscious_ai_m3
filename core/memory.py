@@ -21,15 +21,18 @@ class Memory:
         )
         print(f"💾 Saved: {text}")
 
-    def recall(self, query: str, n_results: int = 1):
+    def recall(self, query: str, n_results: int = 5): 
         """นึกถึงความจำที่เกี่ยวข้องกับเรื่องนี้"""
-        results = self.collection.query(
-            query_texts=[query],
-            n_results=n_results
-        )
-        # ถ้าเจอความจำ ให้ส่งกลับมาเป็นข้อความ
-        return results['documents'][0] if results['documents'] else []
-
+        try:
+            results = self.collection.query(
+                query_texts=[query],
+                n_results=n_results
+            )
+            # ดึงข้อมูลออกมาทั้งหมดที่เจอ
+            return results['documents'][0] if results['documents'] else []
+        except Exception as e:
+            print(f"Memory Recall Error: {e}")
+            return []
 # ส่วนทดสอบ (รันตรงนี้เพื่อเช็คว่าทำงานได้ไหม)
 if __name__ == "__main__":
     my_mem = Memory()
