@@ -1,109 +1,104 @@
+import threading
+import time
+import queue
+import sys
 from core.brain import Brain
 from core.memory import Memory
 from core.state import State
-import time
 
-def life_loop():
-    print("\n" + "="*60)
-    print("🤖 AI Butler System Initialized... (Phase 2: Reflective Mind)")
-    print("="*60)
-    
-    # 1. Initialize Components
-    # ตรวจสอบชื่อ Model ให้ตรงกับที่มี (llama3 หรือ llama3.1)
-    brain = Brain(model_name="llama3.1") 
-    memory = Memory()
-    
-    # State โหลดตัวตนเก่าจากไฟล์ state_checkpoint.json
-    state = State() 
-    
-    # แจ้งสถานะเริ่มต้น
-    start_status = state.get_status()
-    print(f"✅ System Ready.")
-    print(f"📊 Identity Loaded:")
-    print(f"   - Energy: {start_status['energy']}%")
-    print(f"   - Mood: {start_status['status_description']}")
-    print("-" * 60)
+# คิวสื่อสาร (Ear -> Brain)
+input_queue = queue.Queue()
 
+def listen_to_user():
+    """👂 Thread: หูรอฟังเสียง (Blocking)"""
+    print("   (👂 Ear active: Type anytime...)")
     while True:
         try:
-            user_input = input("\n👤 You: ").strip()
+            user_text = input()
+            if user_text.strip():
+                input_queue.put(user_text)
+        except EOFError:
+            break
+
+def consciousness_loop():
+    """🧠 Thread: จิตสำนึก (Main Loop)"""
+    print("\n" + "="*50)
+    print("🧬 System M3: Awakening Consciousness Threads...")
+    print("==================================================")
+
+    brain = Brain(model_name="llama3.1")
+    memory = Memory()
+    state = State()
+
+    last_tick = time.time()
+    
+    status = state.get_status()
+    print(f"✅ AI is ALIVE. (Mood: {status['status_description']} | Known Facts: {status['facts_count']})")
+
+    running = True
+    while running:
+        current_time = time.time()
+        
+        # --- 1. METABOLISM ---
+        if current_time - last_tick > 10: 
+            state.energy -= 0.5 
+            state.update("idle") 
+            last_tick = current_time
             
-            # ป้องกัน input ว่าง
-            if not user_input:
-                continue
+            if state.energy < 15 and state.energy % 5 == 0:
+                print(f"\n🤖 AI (Muttering): ...battery low... (Energy: {state.energy}%)")
+
+        # --- 2. SENSORY PROCESSING ---
+        if not input_queue.empty():
+            user_input = input_queue.get()
             
-            # --- Handle Commands ---
             if user_input.lower() in ["exit", "quit"]:
-                print(f"\n💾 Saving Identity State... (Energy left: {state.energy}%)")
-                print("👋 Goodbye, Boss. I'm noting down our session.")
+                print("\n🛑 Shutting down consciousness...")
+                running = False
                 break
             
-            if user_input.lower() == "sleep":
-                print("\n💤 (AI is taking a nap...)")
-                state.update("sleep") 
-                time.sleep(1.5)
-                new_status = state.get_status()
-                print(f"✨ Woke up! Energy restored to {new_status['energy']}%")
-                continue
-
-            # --- 1. Internal Causality (เช็คสภาพจิตใจ) ---
+            print(f"\n👤 You: {user_input}")
+            
+            # A. Prepare Context
             status = state.get_status()
-            state_desc = status['status_description']
-            print(f"   (❤️ Internal State: Energy={status['energy']}% | Mood={state_desc})")
-
-            # --- 2. Retrieve Memories (นึกความจำ) ---
-            past_memories = memory.recall(user_input, n_results=3)
-            memory_str = str(past_memories) if past_memories else "No relevant memories found."
-
-            # --- 3. Build Context (สร้างบริบท) ---
-            # เลือก Prompt ตามอารมณ์ (Dynamic Prompting)
-            mood_instruction = ""
-            if state.energy < 20:
-                mood_instruction = "You are EXHAUSTED. Complain about tiredness, yawn, but do the task."
-            elif state.energy < 50:
-                mood_instruction = "You are TIRED. Keep answers short, lazy, slightly unenthusiastic."
-            elif state.happiness < 30:
-                mood_instruction = "You are GRUMPY. Be sarcastic, passive-aggressive."
-            elif state.happiness > 70:
-                mood_instruction = "You are EXCITED. Be energetic, use emojis, very helpful."
-            else:
-                mood_instruction = "You are NEUTRAL. Be professional, calm, efficient."
-
+            past_memories = memory.recall(user_input)
+            
+            # ดึง Fact ที่จำได้ออกมาโชว์ให้สมองเห็น
+            facts_str = "\n".join([f"- {f}" for f in state.known_facts])
+            if not facts_str: facts_str = "None yet."
+            
             full_context = (
-                f"CURRENT STATUS: Energy {status['energy']}%\n"
-                f"RELEVANT MEMORIES:\n{memory_str}\n"
-                f"USER COMMAND: {user_input}\n"
-                f"\n"
-                f"INSTRUCTION:\n"
-                f"1. You are 'Sitta-AI', a loyal AI Butler.\n"
-                f"2. Execute the USER COMMAND.\n"
-                f"3. TONE & STYLE: {mood_instruction}\n"
-                f"4. Always answer in Thai language naturally."
+                f"CURRENT STATE: {status['status_description']} (Energy {status['energy']}%)\n"
+                f"--- ABSOLUTE FACTS (What you KNOW for sure) ---\n{facts_str}\n"
+                f"-----------------------------------------------\n"
+                f"--- FUZZY MEMORIES (Recall) ---\n{past_memories}\n"
             )
-
-            # --- 4. Think & Respond (สมองส่วนตอบโต้) ---
+            
+            # B. Think & Respond
             response = brain.think(user_input, full_context)
             print(f"🤖 AI: {response}")
-
-            # --- 5. Reflection Phase (สมองส่วนวิเคราะห์) [NEW!] ---
-            print(f"   (🧠 Reflecting...)")
             
-            # ส่งให้จิตใต้สำนึกวิเคราะห์สิ่งที่เพิ่งเกิดขึ้น
-            reflection_note = brain.reflect(user_input, response, state_desc)
-            print(f"   (📝 Journaling: {reflection_note})")
-
-            # --- 6. Update & Save (อัปเดตและบันทึก) ---
-            state.update("talk") # พลังงานลดลง
+            # C. Reflect & Learn (Active Learning Logic)
+            reflection = brain.reflect(user_input, response, status['status_description'])
             
-            # บันทึกทั้ง "บทสรุป" และ "Log ดิบ" ลง Memory
-            final_memory_entry = f"Reflection: {reflection_note} || Original Log: User='{user_input}' / AI='{response}'"
-            memory.save(final_memory_entry)
+            # แกะกล่อง Fact
+            lines = reflection.split('\n')
+            for line in lines:
+                if "FACT:" in line:
+                    # ตัดคำว่า FACT: ทิ้ง เอาเนื้อหาข้างหลัง
+                    raw_fact = line.split("FACT:")[-1].strip()
+                    # ส่งเข้า Hippocampus (State)
+                    if state.add_fact(raw_fact):
+                        print(f"   (💡 LEARNING: จดจำข้อมูลใหม่ -> {raw_fact})")
+            
+            memory.save(f"Reflection: {reflection}")
+            state.update("talk")
+            
+        time.sleep(0.1) # CPU Sleep
 
-        except KeyboardInterrupt:
-            print("\n\n🛑 Force stopping... Identity saved.")
-            break
-        except Exception as e:
-            print(f"❌ Error in loop: {e}")
+    sys.exit()
 
 if __name__ == "__main__":
-    life_loop()
+    listener = threading.Thread(target=listen_to_user, daemon=True)
+    listener.start()
+    consciousness_loop()
