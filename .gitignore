@@ -1,0 +1,27 @@
+# .gitignore
+
+# Python compilation
+__pycache__/
+*.py[cod]
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Database files (ChromaDB - เราเก็บไว้ในเครื่องพอ ไม่ต้องขึ้น git)
+data/
+db/
+*.db
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# IDE settings
+.vscode/
+.idea/
+.DS_Store
