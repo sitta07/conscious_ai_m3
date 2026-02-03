@@ -186,3 +186,11 @@ class Brain:
         except Exception as e:
             print(f"Value extraction error: {e}")
             return []
+    
+    def validate_fact(self, fact: str) -> bool:
+        """Check if a fact is valid (not empty, not 'None', meaningful)."""
+        if not fact or len(fact.strip()) < 3:
+            return False
+        if fact.lower() == "none":
+            return False
+        return True
