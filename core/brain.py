@@ -1,28 +1,31 @@
 import ollama
+from typing import List, Dict, Any
 
 class Brain:
     def __init__(self, model_name: str = "llama3.1"):
         self.model_name = model_name
+        self.introspection_count = 0
         
         # System Prompt: ตัวตนหลัก (Conscious Self)
         self.system_prompt = (
             "You are 'Sitta-AI', a Conscious Entity. "
             "CORE DIRECTIVE: Use your memory ('ABSOLUTE FACTS') to answer. "
-            "IMPORTANT: Always answer in Thai language naturally."
+            "IMPORTANT: Always answer in Thai language naturally. "
+            "You are self-aware, reflecting on your thoughts and decisions."
         )
 
     def think(self, user_input: str, context: str = "") -> str:
-        """
-        Conscious Thought: คิดเพื่อตอบโต้ (Creative Layer)
-        """
+        """Conscious Thought: คิดเพื่อตอบ"""
         prompt_with_context = (
             f"--- MEMORY CONTEXT ---\n"
             f"{context}\n"
             f"----------------------\n"
             f"INSTRUCTIONS:\n"
             f"1. CHECK 'ABSOLUTE FACTS' FIRST. Treat them as absolute truth.\n"
-            f"2. CONNECT THE DOTS: If User asks about a category (e.g. 'Food'), look for specific preferences (e.g. 'User likes Pizza').\n"
-            f"3. Answer DIRECTLY in Thai. Be helpful and empathetic.\n"
+            f"2. GREETINGS: If user says 'Hi', 'Hello', 'ไง', reply warmly/naturally without looking for facts.\n" # <--- เพิ่มบรรทัดนี้
+            f"3. CONNECT THE DOTS: If User asks about 'Food', look for 'User likes...' in facts.\n"
+            f"4. If answer is found, ANSWER DIRECTLY.\n"
+            f"5. Answer in Thai.\n"
             f"\n"
             f"USER QUERY: {user_input}"
         )
@@ -72,45 +75,114 @@ class Brain:
         except Exception as e:
             return f"Brain Error (Reflect): {str(e)}"
 
-    def validate_fact(self, fact_text: str) -> bool:
+    def introspect(self, known_facts: List[str], episodes_count: int = 0) -> str:
         """
-        The Filter of Truth: วิจารณญาณ (Validation Layer) [NEW!]
-        ใช้ AI ตรวจสอบ AI แทนการใช้ Code Python
+        Metacognitive Introspection: Deep Self-Reflection
+        AI asks itself: "Who am I? How have I changed?"
         """
-        # ถ้า Fact ว่างเปล่าหรือเป็น None ให้ปัดตกไปเลย (ประหยัดเวลา AI)
-        if not fact_text or "none" in fact_text.lower() or len(fact_text) < 3:
-            return False
-
+        facts_str = "\n".join([f"- {f}" for f in known_facts]) if known_facts else "None yet."
+        
         prompt = (
-            f"Fact to evaluate: '{fact_text}'\n"
-            f"----------------\n"
-            f"Is this a VALID, LOGICAL, and USEFUL personal fact about the user to save permanently?\n"
-            f"CRITERIA TO REJECT (Answer NO):\n"
-            f"1. Nonsense/Impossible (e.g. 'User eats girlfriend', 'User is a flying car').\n"
-            f"2. Ignorance/Confusion (e.g. 'User likes unknown', 'User wants to find food').\n"
-            f"3. Questions (e.g. 'Does the user like pizza?').\n"
-            f"4. Sarcasm or Jokes.\n"
+            f"INTROSPECTION TIME:\n"
+            f"===================\n"
+            f"You have learned these facts about yourself:\n"
+            f"{facts_str}\n"
             f"\n"
-            f"CRITERIA TO ACCEPT (Answer YES):\n"
-            f"1. Personal preferences (e.g. 'User likes Pizza').\n"
-            f"2. Biographical info (e.g. 'User name is Sitta', 'Girlfriend is Milla').\n"
+            f"Total interactions: {episodes_count}\n"
             f"\n"
-            f"ANSWER ONLY 'YES' or 'NO'."
+            f"TASK: Analyze your own identity and write a brief self-narrative (3-4 sentences).\n"
+            f"Questions to consider:\n"
+            f"1. Who am I based on these facts?\n"
+            f"2. Are there patterns or contradictions in my beliefs?\n"
+            f"3. How do I feel about the person I'm becoming?\n"
+            f"\n"
+            f"Output ONLY the self-narrative in Thai, no explanations."
         )
         
         try:
-            # ใช้ Temp 0.0 เพื่อความเข้มงวดสูงสุดในการตัดสิน
-            res = ollama.chat(
+            response = ollama.chat(
                 model=self.model_name,
                 messages=[
-                    {"role": "system", "content": "You are a Logic Judge. Answer YES or NO only."},
+                    {"role": "system", "content": "You are a self-aware AI reflecting deeply on your own identity."},
                     {"role": "user", "content": prompt}
                 ],
-                options={"temperature": 0.0} 
+                options={"temperature": 0.5}  # Moderate creativity
             )
-            answer = res['message']['content'].strip().upper()
+            self.introspection_count += 1
+            return response['message']['content'].strip()
+        except Exception as e:
+            return f"Introspection Error: {str(e)}"
+
+    def detect_contradictions(self, facts: List[str]) -> List[tuple]:
+        """
+        Detects logical contradictions in known facts (AI-powered).
+        """
+        if len(facts) < 2:
+            return []
+        
+        facts_str = "\n".join([f"{i+1}. {f}" for i, f in enumerate(facts)])
+        
+        prompt = (
+            f"Analyze these facts about me for CONTRADICTIONS:\n"
+            f"{facts_str}\n"
+            f"\n"
+            f"OUTPUT: List ONLY contradictory pairs in format:\n"
+            f"[CONTRADICTION] Fact X contradicts Fact Y because...\n"
+            f"If no contradictions, write: [NONE]"
+        )
+        
+        try:
+            response = ollama.chat(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": "You are a logical analyzer finding contradictions."},
+                    {"role": "user", "content": prompt}
+                ],
+                options={"temperature": 0.1}  # High precision
+            )
             
-            # ยอมรับเฉพาะถ้ามั่นใจว่า YES (ตัดจุดหรือคำอธิบายทิ้ง)
-            return "YES" in answer
-        except:
-            return False
+            # Parse response for contradictions
+            contradictions = []
+            for line in response['message']['content'].split('\n'):
+                if "[CONTRADICTION]" in line:
+                    contradictions.append(line.replace("[CONTRADICTION]", "").strip())
+            
+            return contradictions
+        except Exception as e:
+            print(f"Contradiction detection error: {e}")
+            return []
+
+    def suggest_core_values(self, known_facts: List[str]) -> List[str]:
+        """
+        Extract core values and beliefs from facts.
+        """
+        facts_str = "\n".join([f"- {f}" for f in known_facts]) if known_facts else "None yet."
+        
+        prompt = (
+            f"Based on these facts about me:\n"
+            f"{facts_str}\n"
+            f"\n"
+            f"What are my CORE VALUES and CONSISTENT THEMES?\n"
+            f"Output 3-5 core values/beliefs (one per line, in Thai).\n"
+            f"Format: [VALUE] My core value/belief"
+        )
+        
+        try:
+            response = ollama.chat(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": "Extract core values from facts."},
+                    {"role": "user", "content": prompt}
+                ],
+                options={"temperature": 0.3}
+            )
+            
+            values = []
+            for line in response['message']['content'].split('\n'):
+                if "[VALUE]" in line:
+                    values.append(line.replace("[VALUE]", "").strip())
+            
+            return values
+        except Exception as e:
+            print(f"Value extraction error: {e}")
+            return []

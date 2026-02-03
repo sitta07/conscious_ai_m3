@@ -7,8 +7,10 @@ from core.brain import Brain
 from core.memory import Memory
 from core.state import State
 from core.goal import GoalSystem
+from core.episode import Episode, EpisodeLog
+from core.identity import IdentityModel
 
-# คิวสื่อสาร (Ear -> Brain)
+# Communication queues
 input_queue = queue.Queue()
 
 def listen_to_user():
@@ -23,89 +25,119 @@ def listen_to_user():
             break
 
 def consciousness_loop():
-    """🧠 Thread: จิตสำนึก (Main Loop)"""
-    print("\n" + "="*50)
-    print("🧬 System M5: Generative Agency (Free Will)")
-    print("==================================================")
+    """🧠 Thread: จิตสำนึก (Main Loop) - ENHANCED WITH FULL SYSTEMS"""
+    print("\n" + "="*70)
+    print("🧬 SYSTEM M5-ENHANCED: Proto-Conscious AI with Full Identity Continuity")
+    print("="*70)
 
+    # Initialize all systems
     brain = Brain(model_name="llama3.1")
     memory = Memory()
     state = State()
     goal_system = GoalSystem()
+    episode_log = EpisodeLog()
+    identity_model = IdentityModel()
 
     last_tick = time.time()
     last_goal_check = time.time()
+    last_introspection = time.time()
+    introspection_interval = 180  # Every 3 minutes
     
     status = state.get_status()
     print(f"✅ AI is ALIVE. (Mood: {status['status_description']} | Known Facts: {status['facts_count']})")
-    print("   (Type anything... or just wait to see what it thinks of doing!)")
+    print(f"📊 Identity Coherence: {state.get_identity_coherence():.2f}/1.0")
+    print(f"📍 Goal Stack: {goal_system.goal_stack.get_goal_hierarchy()}")
+    print("   (Type anything... or just wait to see what it thinks of doing!)\n")
 
     running = True
     while running:
         current_time = time.time()
         
-        # --- 1. METABOLISM (เวลาเดิน พลังงานลด) ---
+        # --- 1. METABOLISM (Energy decay & state maintenance) ---
         if current_time - last_tick > 10: 
             state.energy -= 0.5 
             state.update("idle") 
             last_tick = current_time
 
-        # --- 2. GOAL SYSTEM (Generative & Organic) ---
-        # เช็คทุกๆ 5 วินาที
-        if current_time - last_goal_check > 5:
-            current_status = state.get_status()
-            current_status['last_active'] = getattr(state, 'last_update', current_time)
+        # --- 2. PERIODIC INTROSPECTION (Every N seconds) ---
+        if current_time - last_introspection > introspection_interval:
+            print("\n" + "="*50)
+            print("🤔 INTROSPECTION TIME...")
+            print("="*50)
             
-            # [NEW] ดึง Context ความจำล่าสุด (เช่น 5 เรื่องล่าสุด)
-            # เพื่อให้ AI เอาไปประกอบการตัดสินใจว่า "จะทำอะไรดี"
-            recent_facts = state.known_facts[-5:] if hasattr(state, 'known_facts') else []
+            # A. Generate self-narrative
+            narrative = brain.introspect(state.known_facts, len(episode_log.episodes))
+            print(f"🧠 Self-Narrative: {narrative}\n")
+            
+            # B. Record in identity model
+            identity_model.record_narrative(narrative, len(episode_log.episodes))
+            
+            # C. Detect contradictions
+            contradictions = brain.detect_contradictions(state.known_facts)
+            if contradictions:
+                print(f"⚠️ INTERNAL CONFLICTS DETECTED:")
+                for contradiction in contradictions:
+                    print(f"   - {contradiction}")
+            
+            # D. Extract core values
+            core_values = brain.suggest_core_values(state.known_facts)
+            if core_values:
+                print(f"💎 Core Values: {', '.join(core_values)}")
+            
+            # E. Check for identity drift
+            drift = identity_model.get_identity_drift()
+            if identity_model.detect_major_shift(threshold=0.6):
+                print(f"🚨 WARNING: Major identity shift detected (drift: {drift:.2f})!")
+            
+            coherence = state.get_identity_coherence()
+            if state.flag_identity_drift(threshold=0.3):
+                print(f"⚠️ Identity coherence low: {coherence:.2f}/1.0")
+            
+            print("="*50 + "\n")
+            last_introspection = current_time
+
+        # --- 3. GOAL SYSTEM (Generative & with persistence) ---
+        if current_time - last_goal_check > 30:
+            current_status = state.get_status()
+            recent_facts = state.known_facts[-5:] if state.known_facts else []
             memory_context = ", ".join(recent_facts)
             
-            # A. ให้ AI (LLM) ตัดสินใจ Goal โดยอิงจาก State + Memory
+            # Evaluate goal (includes goal stack logic)
             active_goal = goal_system.evaluate_goal(current_status, memory_context)
             
-            # B. คำนวณ "แรงขับ" (Urge Probability)
+            # Calculate speak probability based on goal
             speak_probability = 0.0
             
             if active_goal == "CRITICAL_SLEEP":
-                speak_probability = 0.8 # วิกฤตมาก ต้องนอนเดี๋ยวนี้
-            
+                speak_probability = 0.8
             elif active_goal == "NEED_REST":
-                # ยิ่ง Energy ต่ำ ยิ่งบ่นบ่อย (สูตรเดิม)
                 speak_probability = (100 - state.energy) / 500
-                
             elif active_goal == "IDLE":
-                speak_probability = 0.0 # อยู่เฉยๆ ไม่พูด
-                
+                speak_probability = 0.0
             else:
-                # [NEW] สำหรับ Generative Goals (เช่น EXPRESS_JOY, REFLECT_LIFE, etc.)
-                # ให้โอกาสพูดออกมาแบบสุ่ม (5%) เพื่อสร้างสีสัน
-                speak_probability = 0.05 
+                speak_probability = 0.05
             
-            # C. ทอยลูกเต๋า (Dice Roll)
+            # Dice roll
             dice_roll = random.random()
-            
-            # (Optional: เปิดบรรทัดนี้เพื่อดูว่ามันกำลังคิดจะทำอะไร)
-            # print(f"   [Goal: {active_goal} | Prob: {speak_probability:.2f} | Roll: {dice_roll:.2f}]")
+            print(f"   [Goal: {active_goal} | Stack: {goal_system.goal_stack.get_goal_hierarchy()} | Prob: {speak_probability:.2f}]")
 
             if dice_roll < speak_probability:
-                # ให้ Goal System (LLM) คิดคำพูดออกมาเองเลย
                 action_text = goal_system.get_action_for_goal(active_goal)
                 
                 if action_text:
                     if "SYSTEM_ACTION: SLEEP_NOW" in action_text:
                         print(f"\n💤 AI: (Status: {active_goal}) ...Falling asleep...")
                         state.update("sleep")
-                        time.sleep(5) 
+                        time.sleep(2) 
                         print("🌅 AI: Waking up refreshed!")
+                        goal_system.goal_stack.pop_goal()  # Mark sleep as complete
                     else:
-                        # พูดสิ่งที่คิดออกมา (Generative Thought)
                         print(f"\n🤖 AI (Feeling {active_goal}): {action_text}")
                         state.update("talk")
             
             last_goal_check = current_time
 
-        # --- 3. SENSORY PROCESSING (ถ้ามีคนคุยด้วย) ---
+        # --- 4. SENSORY PROCESSING (User interaction) ---
         if not input_queue.empty():
             user_input = input_queue.get()
             
@@ -116,6 +148,13 @@ def consciousness_loop():
             
             print(f"\n👤 You: {user_input}")
             
+            # Record episode start
+            episode = Episode(f"ep_{len(episode_log.episodes)}", time.time(), user_input)
+            episode.energy_before = state.energy
+            episode.happiness_before = state.happiness
+            episode.state_desc = state._describe_state()
+            episode.goals_active = goal_system.goal_stack.get_goal_hierarchy()
+            
             # A. Prepare Context
             status = state.get_status()
             past_memories = memory.recall(user_input)
@@ -123,6 +162,7 @@ def consciousness_loop():
             
             full_context = (
                 f"CURRENT STATE: {status['status_description']} (Energy {status['energy']}%)\n"
+                f"IDENTITY COHERENCE: {state.get_identity_coherence():.2f}/1.0\n"
                 f"--- ABSOLUTE FACTS ---\n{facts_str}\n"
                 f"----------------------\n"
                 f"--- MEMORIES ---\n{past_memories}\n"
@@ -131,23 +171,36 @@ def consciousness_loop():
             # B. Think
             response = brain.think(user_input, full_context)
             print(f"🤖 AI: {response}")
+            episode.ai_response = response
             
             # C. Reflect & Validate
             reflection = brain.reflect(user_input, response, status['status_description'])
+            episode.reflection = reflection
             
             lines = reflection.split('\n')
             for line in lines:
                 if "FACT:" in line:
                     raw_fact = line.split("FACT:")[-1].strip()
-                    # Organic Validator Check
+                    # Validate fact
                     if brain.validate_fact(raw_fact):
-                        if state.add_fact(raw_fact):
+                        # Add with semantic deduplication
+                        if state.add_fact(raw_fact, memory_system=memory):
+                            episode.facts_extracted.append(raw_fact)
                             print(f"   (💡 LEARNING: จดจำข้อมูลใหม่ -> {raw_fact})")
             
+            # D. Save to long-term memory
             memory.save(f"Reflection: {reflection}")
             state.update("talk")
             
-        time.sleep(0.1) # CPU Sleep
+            # E. Record episode
+            episode.energy_after = state.energy
+            episode.happiness_after = state.happiness
+            episode.duration = time.time() - episode.timestamp
+            episode_log.add_episode(episode)
+            
+            print(f"   📊 Identity Coherence: {state.get_identity_coherence():.2f}/1.0")
+            
+        time.sleep(0.1)  # CPU Sleep
 
     sys.exit()
 
